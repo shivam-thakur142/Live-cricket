@@ -25,6 +25,29 @@ const pg = new EmbeddedPostgres({
 });
 
 async function main() {
+  const pidFile = path.join(dataDir, "postmaster.pid");
+  if (fs.existsSync(pidFile)) {
+    try {
+      const pidStr = fs.readFileSync(pidFile, "utf8").split("\n")[0].trim();
+      const pidNum = parseInt(pidStr, 10);
+      let isAlive = false;
+      if (!isNaN(pidNum) && pidNum > 0) {
+        try {
+          process.kill(pidNum, 0);
+          isAlive = true;
+        } catch {
+          isAlive = false;
+        }
+      }
+      if (!isAlive) {
+        console.log(`[db] Removing stale postmaster.pid (PID ${pidStr} is not running).`);
+        fs.unlinkSync(pidFile);
+      }
+    } catch (e) {
+      console.warn("[db] Could not check stale postmaster.pid:", e);
+    }
+  }
+
   const alreadyInitialized = fs.existsSync(path.join(dataDir, "PG_VERSION"));
   if (alreadyInitialized) {
     console.log(`[db] Existing cluster found in .pgdata — skipping initdb.`);
