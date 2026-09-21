@@ -756,11 +756,13 @@ async function main() {
   }
 
   // --- Activity ------------------------------------------------------------------
+  const adminUser = await prisma.user.findUnique({ where: { email: adminEmail } });
+  const editorUser = await prisma.user.findUnique({ where: { email: env.SEED_EDITOR_EMAIL.toLowerCase() } });
   const activityList = [
-    { id: "a1", type: "tournament", description: "Created Sirmour Cricket League 2026", userId: "u1", userName: "Rahul Verma", entityType: "tournament", entityId: "scl-2026", createdAt: new Date("2026-01-10T10:00:00Z") },
-    { id: "a2", type: "match", description: "Updated scorecard for Match 5", userId: "u2", userName: "Anita Rana", entityType: "match", entityId: "scl-m5", createdAt: new Date("2026-01-19T18:30:00Z") },
-    { id: "a3", type: "team", description: "Added Rajgarh Royals squad", userId: "u1", userName: "Rahul Verma", entityType: "team", entityId: "rajgarh-royals", createdAt: new Date("2026-01-12T14:00:00Z") },
-    { id: "a4", type: "news", description: "Published registration announcement for Nahan T10 Cup", userId: "u2", userName: "Anita Rana", entityType: "news", entityId: "news-3", createdAt: new Date("2026-01-10T09:00:00Z") },
+    { id: "a1", type: "tournament", description: "Created Sirmour Cricket League 2026", userId: adminUser?.id ?? null, userName: "Rahul Verma", entityType: "tournament", entityId: "scl-2026", createdAt: new Date("2026-01-10T10:00:00Z") },
+    { id: "a2", type: "match", description: "Updated scorecard for Match 5", userId: editorUser?.id ?? null, userName: "Anita Rana", entityType: "match", entityId: "scl-m5", createdAt: new Date("2026-01-19T18:30:00Z") },
+    { id: "a3", type: "team", description: "Added Rajgarh Royals squad", userId: adminUser?.id ?? null, userName: "Rahul Verma", entityType: "team", entityId: "rajgarh-royals", createdAt: new Date("2026-01-12T14:00:00Z") },
+    { id: "a4", type: "news", description: "Published registration announcement for Nahan T10 Cup", userId: editorUser?.id ?? null, userName: "Anita Rana", entityType: "news", entityId: "news-3", createdAt: new Date("2026-01-10T09:00:00Z") },
   ];
   for (const a of activityList) {
     if (!(await prisma.activity.findUnique({ where: { id: a.id } }))) {

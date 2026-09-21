@@ -22,7 +22,11 @@ import type {
   Venue,
 } from "@/types";
 
-const RAW_API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+const RAW_API_URL =
+  import.meta.env.VITE_API_URL ||
+  (typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1"
+    ? "https://live-cricket-1.onrender.com/api"
+    : "http://localhost:4000/api");
 const API_BASE = RAW_API_URL.replace(/\/+$/, "");
 const TOKEN_KEY = "scl_token";
 const USER_KEY = "scl_user";
@@ -123,7 +127,8 @@ async function apiFetch<T>(
     }
 
     if (!res.ok) {
-      console.warn(`[API] ${options.method || "GET"} ${endpoint} responded with ${res.status}, using local fallback.`);
+      const errBody = await res.text().catch(() => "");
+      console.warn(`[API] ${options.method || "GET"} ${endpoint} responded with ${res.status}: ${errBody}`);
       return await fallback();
     }
 

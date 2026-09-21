@@ -4,7 +4,10 @@ export const idParamSchema = z.object({ id: z.string().min(1) });
 
 export const dateString = z
   .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, "Expected date format YYYY-MM-DD");
+  .refine((val) => !isNaN(Date.parse(val)) || /^\d{4}-\d{2}-\d{2}/.test(val), {
+    message: "Expected date format YYYY-MM-DD",
+  })
+  .transform((val) => val.split("T")[0]);
 
 export const timeString = z
   .string()
