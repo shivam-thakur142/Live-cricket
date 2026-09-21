@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { Menu, X, Trophy } from "lucide-react";
+import { Menu, X, Trophy, Lock } from "lucide-react";
 import { cn } from "@/utils/helpers";
 
 const navLinks = [
@@ -45,10 +45,11 @@ export function Header() {
           ))}
           <NavLink
             to="/admin"
-            className={({ isActive }) => cn("nav-link nav-link-admin", isActive && "nav-link-active")}
+            className={({ isActive }) => cn("nav-link nav-link-admin inline-flex items-center gap-1.5", isActive && "nav-link-active")}
             onClick={() => setOpen(false)}
           >
-            Admin
+            <Lock size={13} />
+            <span>Admin</span>
           </NavLink>
         </nav>
 

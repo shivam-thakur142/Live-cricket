@@ -79,14 +79,7 @@ export async function login(
 
 export async function ensureAdminToken(): Promise<string> {
   const existing = getStoredToken();
-  if (existing) return existing;
-  try {
-    const { token } = await login(DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD);
-    return token;
-  } catch (err) {
-    console.warn("[auth] Auto-login failed:", err);
-    return "";
-  }
+  return existing || "";
 }
 
 // --- Generic Request Helper with Fallback ---

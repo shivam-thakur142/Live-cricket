@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, Link } from "react-router-dom";
-import { Trophy, LayoutDashboard, Users, User, CalendarDays, MapPin, Newspaper, Image, Shield, Settings, Menu, X, CheckCircle2 } from "lucide-react";
+import { Trophy, LayoutDashboard, Users, User, CalendarDays, MapPin, Newspaper, Image, Shield, Settings, Menu, X, CheckCircle2, LogOut } from "lucide-react";
 import { cn } from "@/utils/helpers";
-import { ensureAdminToken, getStoredUser } from "@/services/api";
+import { clearAuth, getStoredToken, getStoredUser } from "@/services/api";
+import { AdminLogin } from "@/components/admin/AdminLogin";
+import type { User as UserType } from "@/types";
 
 const adminLinks = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -19,13 +21,19 @@ const adminLinks = [
 
 export function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState(getStoredUser());
+  const [currentUser, setCurrentUser] = useState<UserType | null>(() => {
+    const token = getStoredToken();
+    return token ? getStoredUser() : null;
+  });
 
-  useEffect(() => {
-    void ensureAdminToken().then(() => {
-      setCurrentUser(getStoredUser());
-    });
-  }, []);
+  const handleLogout = () => {
+    clearAuth();
+    setCurrentUser(null);
+  };
+
+  if (!currentUser) {
+    return <AdminLogin onLoginSuccess={(user) => setCurrentUser(user)} />;
+  }
 
   return (
     <div className="admin-layout">
@@ -73,10 +81,21 @@ export function AdminLayout() {
           <div className="admin-topbar-title">Admin Panel</div>
           <div className="flex items-center gap-3">
             {currentUser && (
-              <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                <CheckCircle2 size={13} />
-                <span>{currentUser.name} ({currentUser.role})</span>
-              </span>
+              <>
+                <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <CheckCircle2 size={13} />
+                  <span>{currentUser.name} ({currentUser.role})</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 transition-colors"
+                  title="Sign Out"
+                >
+                  <LogOut size={13} />
+                  <span>Sign Out</span>
+                </button>
+              </>
             )}
             <Link to="/" className="admin-back-link">Back to site</Link>
           </div>
