@@ -22,9 +22,13 @@ import type {
   Venue,
 } from "@/types";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+const RAW_API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+const API_BASE = RAW_API_URL.replace(/\/+$/, "");
 const TOKEN_KEY = "scl_token";
 const USER_KEY = "scl_user";
+
+const DEFAULT_ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || "admin@scl.local";
+const DEFAULT_ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || "Admin@123";
 
 // --- Auth Utilities ---
 
@@ -53,8 +57,8 @@ export function clearAuth() {
 }
 
 export async function login(
-  email: string = "admin@scl.local",
-  password: string = "Admin@123"
+  email: string = DEFAULT_ADMIN_EMAIL,
+  password: string = DEFAULT_ADMIN_PASSWORD
 ): Promise<{ token: string; user: User }> {
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",
@@ -73,9 +77,10 @@ export async function ensureAdminToken(): Promise<string> {
   const existing = getStoredToken();
   if (existing) return existing;
   try {
-    const { token } = await login("admin@scl.local", "Admin@123");
+    const { token } = await login(DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD);
     return token;
-  } catch {
+  } catch (err) {
+    console.warn("[auth] Auto-login failed:", err);
     return "";
   }
 }
@@ -102,32 +107,30 @@ async function apiFetch<T>(
       headers["Authorization"] = `Bearer ${token}`;
     }
 
-    const res = await fetch(`${API_BASE}${endpoint}`, {
+    let res = await fetch(`${API_BASE}${endpoint}`, {
       ...options,
       headers,
     });
 
-    if (!res.ok) {
-      // If 401 on mutation, retry once after re-authenticating
-      if (res.status === 401 && options.method && options.method !== "GET") {
-        clearAuth();
-        const newToken = await ensureAdminToken();
-        if (newToken) {
-          headers["Authorization"] = `Bearer ${newToken}`;
-          const retryRes = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
-          if (retryRes.ok) {
-            const retryJson = await retryRes.json();
-            return retryJson.data;
-          }
-        }
+    // If 401 returned (e.g. token expired), attempt one re-authentication retry
+    if (res.status === 401) {
+      clearAuth();
+      const newToken = await ensureAdminToken();
+      if (newToken) {
+        headers["Authorization"] = `Bearer ${newToken}`;
+        res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
       }
+    }
+
+    if (!res.ok) {
+      console.warn(`[API] ${options.method || "GET"} ${endpoint} responded with ${res.status}, using local fallback.`);
       return await fallback();
     }
 
     const json = await res.json();
     return json.data !== undefined ? json.data : await fallback();
-  } catch {
-    // Backend offline or unreachable — silently use the local fallback store
+  } catch (err) {
+    console.warn(`[API] Network error calling ${endpoint}, using local fallback:`, err);
     return await fallback();
   }
 }

@@ -1,11 +1,15 @@
 import { createApp } from "./app.js";
 import { env } from "./config/env.js";
 import { prisma } from "./config/prisma.js";
+import { ensureDefaultAdmin } from "./services/bootstrapService.js";
 
 async function main() {
   // Fail fast if the database is unreachable.
   await prisma.$queryRaw`SELECT 1`;
   console.log("[server] Database connection established.");
+
+  // Guarantee at least one admin exists (safe/idempotent).
+  await ensureDefaultAdmin();
 
   const app = createApp();
   app.listen(env.PORT, () => {
