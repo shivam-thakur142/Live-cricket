@@ -8,41 +8,55 @@ import { env } from "../config/env.js";
  * it creates it using bcrypt with 10 salt rounds.
  * If it already exists, ensures its role is "admin".
  */
-export async function ensureDefaultAdmin(): Promise<void> {
-  try {
-    const adminEmail = env.effectiveAdminEmail;
-    const existing = await prisma.user.findUnique({
-      where: { email: adminEmail },
-    });
+async function ensureUser(
+  name: string,
+  email: string,
+  rawPassword: string,
+  role: "admin" | "editor" | "viewer"
+): Promise<void> {
+  const normalizedEmail = email.toLowerCase().trim();
+  const existing = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+  });
 
-    if (!existing) {
-      const passwordHash = await bcrypt.hash(env.effectiveAdminPassword, 10);
-      await prisma.user.create({
+  if (!existing) {
+    const passwordHash = await bcrypt.hash(rawPassword, 10);
+    await prisma.user.create({
+      data: {
+        name,
+        email: normalizedEmail,
+        passwordHash,
+        role,
+      },
+    });
+    console.log(`[bootstrap] Created default ${role} account: ${normalizedEmail}`);
+  } else {
+    const isMatch = await bcrypt.compare(rawPassword, existing.passwordHash);
+    if (!isMatch || existing.role !== role) {
+      const passwordHash = isMatch ? existing.passwordHash : await bcrypt.hash(rawPassword, 10);
+      await prisma.user.update({
+        where: { id: existing.id },
         data: {
-          name: "SCL Admin",
-          email: adminEmail,
+          role,
           passwordHash,
-          role: "admin",
         },
       });
-      console.log(`[bootstrap] Created default admin account: ${adminEmail}`);
+      console.log(`[bootstrap] Synced ${role} account credentials/role: ${normalizedEmail}`);
     } else {
-      const isMatch = await bcrypt.compare(env.effectiveAdminPassword, existing.passwordHash);
-      if (!isMatch || existing.role !== "admin") {
-        const passwordHash = isMatch ? existing.passwordHash : await bcrypt.hash(env.effectiveAdminPassword, 10);
-        await prisma.user.update({
-          where: { id: existing.id },
-          data: {
-            role: "admin",
-            passwordHash,
-          },
-        });
-        console.log(`[bootstrap] Synced admin account credentials/role: ${adminEmail}`);
-      } else {
-        console.log(`[bootstrap] Admin account verified: ${adminEmail}`);
-      }
+      console.log(`[bootstrap] Verified ${role} account: ${normalizedEmail}`);
     }
+  }
+}
+
+/**
+ * Ensures default admin, editor, and viewer accounts exist in the database.
+ */
+export async function ensureDefaultAdmin(): Promise<void> {
+  try {
+    await ensureUser("SCL Admin", env.effectiveAdminEmail, env.effectiveAdminPassword, "admin");
+    await ensureUser("Tournament Editor", env.SEED_EDITOR_EMAIL, env.SEED_EDITOR_PASSWORD, "editor");
+    await ensureUser("Guest Viewer", env.SEED_VIEWER_EMAIL, env.SEED_VIEWER_PASSWORD, "viewer");
   } catch (err) {
-    console.error("[bootstrap] Error checking/creating default admin:", err);
+    console.error("[bootstrap] Error checking/creating default users:", err);
   }
 }

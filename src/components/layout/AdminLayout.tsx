@@ -15,8 +15,8 @@ const adminLinks = [
   { to: "/admin/venues", label: "Venues", icon: MapPin },
   { to: "/admin/news", label: "News", icon: Newspaper },
   { to: "/admin/gallery", label: "Gallery", icon: Image },
-  { to: "/admin/users", label: "Users", icon: Shield },
-  { to: "/admin/settings", label: "Settings", icon: Settings },
+  { to: "/admin/users", label: "Users", icon: Shield, adminOnly: true },
+  { to: "/admin/settings", label: "Settings", icon: Settings, adminOnly: true },
 ];
 
 export function AdminLayout() {
@@ -34,6 +34,10 @@ export function AdminLayout() {
   if (!currentUser) {
     return <AdminLogin onLoginSuccess={(user) => setCurrentUser(user)} />;
   }
+
+  const visibleLinks = adminLinks.filter(
+    (link) => !link.adminOnly || currentUser.role === "admin"
+  );
 
   return (
     <div className="admin-layout">
@@ -53,7 +57,7 @@ export function AdminLayout() {
           </button>
         </div>
         <nav className="admin-nav">
-          {adminLinks.map((link) => (
+          {visibleLinks.map((link) => (
             <NavLink
               key={link.to}
               to={link.to}

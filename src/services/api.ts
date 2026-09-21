@@ -215,6 +215,48 @@ export async function getUsers(): Promise<User[]> {
   return apiFetch("/users", {}, () => localStore.users);
 }
 
+export async function createUser(data: {
+  name: string;
+  email: string;
+  password: string;
+  role: UserRole;
+}): Promise<User> {
+  return apiFetch(
+    "/users",
+    { method: "POST", body: JSON.stringify(data) },
+    () => {
+      const id = `user-${Date.now()}`;
+      const user: User = { id, name: data.name, email: data.email, role: data.role };
+      localStore.users.push(user);
+      return user;
+    }
+  );
+}
+
+export async function updateUserRole(id: string, role: UserRole): Promise<User> {
+  return apiFetch(
+    `/users/${id}/role`,
+    { method: "PATCH", body: JSON.stringify({ role }) },
+    () => {
+      const user = localStore.users.find((u) => u.id === id);
+      if (user) user.role = role;
+      return user!;
+    }
+  );
+}
+
+export async function deleteUser(id: string): Promise<boolean> {
+  return apiFetch(
+    `/users/${id}`,
+    { method: "DELETE" },
+    () => {
+      const idx = localStore.users.findIndex((u) => u.id === id);
+      if (idx !== -1) localStore.users.splice(idx, 1);
+      return true;
+    }
+  );
+}
+
 export async function getActivities(): Promise<Activity[]> {
   return apiFetch("/activities", {}, () => localStore.activities);
 }
